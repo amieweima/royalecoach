@@ -10,3 +10,6 @@ load_dotenv(ROOT / ".env")
 API_TOKEN = os.getenv("CLASH_API_TOKEN", "")
 MY_TAG = os.getenv("MY_PLAYER_TAG", "")
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{ROOT / 'royalecoach.db'}")
+# hosts like Render hand out postgres:// URLs; SQLAlchemy 2 wants postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)

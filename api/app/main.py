@@ -1,3 +1,7 @@
+import os
+import threading
+import time
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
@@ -8,18 +12,40 @@ from .models import Battle, PlayerSeen
 
 app = FastAPI(title="RoyaleCoach API")
 
-# the Next.js dev server; tighten to the deployed dashboard origin in prod
+# comma-separated origins; in prod set ALLOWED_ORIGINS to the dashboard URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL_SECONDS", "600"))
+
+
+def _poll_forever() -> None:
+    """In-process poller for deployments where a separate loop process isn't
+    available (single web service). Enabled with ENABLE_POLLER=1."""
+    from . import config
+    from .clash_client import ClashClient
+    from .ingest.poller import run_once
+
+    client = ClashClient(config.API_TOKEN)
+    while True:
+        try:
+            n = run_once(client, config.MY_TAG)
+            if n:
+                print(f"poller: {n} new battle(s)")
+        except Exception as e:  # keep polling through transient API errors
+            print(f"poller error: {e}")
+        time.sleep(POLL_INTERVAL)
 
 
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    if os.getenv("ENABLE_POLLER") == "1":
+        threading.Thread(target=_poll_forever, daemon=True).start()
 
 
 @app.get("/health")

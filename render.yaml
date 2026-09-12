@@ -1,0 +1,27 @@
+# Render blueprint: deploys the API + Postgres in one click from the repo.
+# The dashboard (web/) deploys separately on Vercel with NEXT_PUBLIC_API_URL
+# pointed at this service's URL.
+services:
+  - type: web
+    name: royalecoach-api
+    runtime: python
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: CLASH_API_TOKEN
+        sync: false # paste your Supercell key in the Render dashboard
+      - key: MY_PLAYER_TAG
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false # your Vercel URL, e.g. https://royalecoach.vercel.app
+      - key: ENABLE_POLLER
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: royalecoach-db
+          property: connectionString
+
+databases:
+  - name: royalecoach-db
+    plan: free

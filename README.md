@@ -61,6 +61,20 @@ The database defaults to a local SQLite file; set `DATABASE_URL` in `.env` to
 point at Postgres for a production deployment (SQLAlchemy makes this a
 config-only change).
 
+## Deploy
+
+- **API + Postgres (Render):** the repo ships a `render.yaml` blueprint — in
+  Render choose *New → Blueprint*, point it at this repo, then fill in
+  `CLASH_API_TOKEN`, `MY_PLAYER_TAG`, and `ALLOWED_ORIGINS` (your dashboard
+  URL). `ENABLE_POLLER=1` makes the API poll your battles in-process, so no
+  separate worker is needed. Add the service's outbound IPs (shown in Render's
+  service settings) to your key's allowed list at developer.clashroyale.com.
+- **Dashboard (Vercel):** import the repo, set the root directory to `web/`,
+  and add the env var `NEXT_PUBLIC_API_URL` pointing at the Render API URL.
+- After the first deploy, seed the global dataset and models from Render's
+  shell: `python -m app.ingest.harvest`, `python -m app.ml.train`,
+  `python -m app.ml.archetypes`.
+
 ## Roadmap
 
 - [x] Ingestion: personal poller + top-ladder harvester with crawl frontier
