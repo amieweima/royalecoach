@@ -170,105 +170,139 @@ export default function Home() {
         <>
           <Section
             eyebrow="matchups"
-            title="Where you lose"
-            note={`Win rate vs. your ${pct(overall)} overall when the opponent's deck contains each card. Only cards seen in ≥5 battles.`}
+            title="Who's beating you"
+            note="Based on which cards the opponent ran, over your competitive battles."
           >
-            <Legend negative="below your overall" positive="above your overall" />
-            {coach.worst_matchups.slice(0, 12).map((m) => (
-              <DeltaRow
-                key={m.card}
-                label={m.card}
-                sub={`${m.n} battles`}
-                value={m.delta_vs_overall}
-                valueLabel={pct(m.win_rate)}
-                maxAbs={maxDelta}
-                leading={<CardChip name={m.card} meta={cards?.[m.card]} />}
-              />
-            ))}
+            {(() => {
+              const trouble = coach.worst_matchups
+                .filter((m) => m.delta_vs_overall < -0.05)
+                .slice(0, 3);
+              if (!trouble.length)
+                return <p className="coach-line">No matchup stands out as a problem yet — nice spread.</p>;
+              return (
+                <>
+                  <p className="coach-line">
+                    {trouble.map((m) => m.card).join(", ")}{" "}
+                    {trouble.length > 1 ? "give" : "gives"} you the most trouble
+                    right now. Scout how those cards are countered before your
+                    next session.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 max-w-md">
+                    {trouble.map((m) => (
+                      <div
+                        key={m.card}
+                        className="card p-4 flex flex-col items-center gap-1 text-center"
+                        style={{ background: "var(--paper)" }}
+                      >
+                        <CardChip name={m.card} meta={cards?.[m.card]} size={64} />
+                        <span className="text-xs font-medium mt-1">{m.card}</span>
+                        <span className="display text-2xl font-semibold tab-nums">
+                          {pct(m.win_rate)}
+                        </span>
+                        <span className="text-xs font-medium" style={{ color: "var(--them)" }}>
+                          ▼ your win rate
+                        </span>
+                        <span className="text-xs" style={{ color: "var(--muted)" }}>
+                          {m.n} battles
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+            <details className="receipts mt-4">
+              <summary>show every matchup</summary>
+              <Legend negative="below your overall" positive="above your overall" />
+              {coach.worst_matchups.slice(0, 12).map((m) => (
+                <DeltaRow
+                  key={m.card}
+                  label={m.card}
+                  sub={`${m.n} battles`}
+                  value={m.delta_vs_overall}
+                  valueLabel={pct(m.win_rate)}
+                  maxAbs={maxDelta}
+                  leading={<CardChip name={m.card} meta={cards?.[m.card]} />}
+                />
+              ))}
+            </details>
           </Section>
 
           <Section
             eyebrow="tilt"
             title="Do you tilt?"
-            note={`Every bar below is the gap between your win rate in that situation and your ${pct(
-              overall
-            )} overall — red means you do worse than usual there, blue means better. Battle counts are on every row; small numbers mean early signals, not verdicts.`}
+            note="How your last result and session length shift your win rate. Small samples mean early signals, not verdicts."
           >
-            <Legend negative="worse than your overall" positive="better than your overall" />
-
-            <p className="text-sm font-semibold mt-4 mb-1">
+            <p className="coach-line">
               <span style={{ color: "var(--gold)" }}>★</span>{" "}
               {momentumTakeaway(coach, overall)}
             </p>
-            {(
-              [
-                ["After a win", coach.tilt.after_win],
-                ["After a loss", coach.tilt.after_loss],
-                ["After two straight losses", coach.tilt.after_two_losses],
-              ] as const
-            ).map(([label, r]) => (
-              <DeltaRow
-                key={label}
-                label={label}
-                sub={`${r.n} battles`}
-                value={(r.win_rate ?? overall) - overall}
-                valueLabel={pct(r.win_rate)}
-                maxAbs={0.35}
-              />
-            ))}
-
-            <p className="text-sm font-semibold mt-5 mb-1">
+            <p className="coach-line">
               <span style={{ color: "var(--gold)" }}>★</span>{" "}
               {staminaTakeaway(coach, overall)}
             </p>
-            {(
-              [
-                ["Battles 1–5 of a session", coach.tilt.session_battles_1_to_5],
-                ["Battle 6 onward", coach.tilt.session_battles_6_plus],
-              ] as const
-            ).map(([label, r]) => (
-              <DeltaRow
-                key={label}
-                label={label}
-                sub={`${r.n} battles`}
-                value={(r.win_rate ?? overall) - overall}
-                valueLabel={pct(r.win_rate)}
-                maxAbs={0.35}
-              />
-            ))}
+            <details className="receipts">
+              <summary>show the numbers</summary>
+              <Legend negative="worse than your overall" positive="better than your overall" />
+              {(
+                [
+                  ["After a win", coach.tilt.after_win],
+                  ["After a loss", coach.tilt.after_loss],
+                  ["After two straight losses", coach.tilt.after_two_losses],
+                  ["Battles 1–5 of a session", coach.tilt.session_battles_1_to_5],
+                  ["Battle 6 onward", coach.tilt.session_battles_6_plus],
+                ] as const
+              ).map(([label, r]) => (
+                <DeltaRow
+                  key={label}
+                  label={label}
+                  sub={`${r.n} battles`}
+                  value={(r.win_rate ?? overall) - overall}
+                  valueLabel={pct(r.win_rate)}
+                  maxAbs={0.35}
+                />
+              ))}
+            </details>
           </Section>
 
           {coach.underleveled_cards.length > 0 && (
             <Section
               eyebrow="card levels"
               title="Your upgrade queue"
-              note="How far below max level each card in your decks sits. Levels are the one weakness you can fix without changing how you play."
+              note="Levels are the one weakness you can fix without changing how you play."
             >
-              {coach.underleveled_cards.slice(0, 10).map((c) => (
-                <div
-                  key={c.card}
-                  className="grid items-center gap-3 py-1.5"
-                  style={{ gridTemplateColumns: "minmax(150px, 1fr) 2fr 72px" }}
-                >
-                  <span className="text-sm font-medium truncate flex items-center gap-2">
-                    <CardChip name={c.card} meta={cards?.[c.card]} />
-                    {c.card}
-                  </span>
-                  <div className="relative h-4 rounded" style={{ background: "var(--paper)" }}>
-                    <div
-                      className="absolute inset-y-0.5 left-0"
-                      style={{
-                        width: `${(c.underlevel / maxUnder) * 100}%`,
-                        background: "var(--you-deep)",
-                        borderRadius: "0 4px 4px 0",
-                      }}
-                    />
+              {(() => {
+                const worst = coach.underleveled_cards.filter(
+                  (c) => c.underlevel === maxUnder
+                );
+                return (
+                  <p className="coach-line">
+                    {worst.map((c) => c.card).join(", ")}{" "}
+                    {worst.length > 1 ? "are" : "is"} furthest behind at{" "}
+                    {maxUnder} {maxUnder > 1 ? "levels" : "level"} below max —
+                    upgrade {worst.length > 1 ? "those" : "it"} first.
+                  </p>
+                );
+              })()}
+              <div className="flex flex-wrap gap-4 mt-2">
+                {coach.underleveled_cards.slice(0, 10).map((c) => (
+                  <div key={c.card} className="flex flex-col items-center gap-1 w-16">
+                    <CardChip name={c.card} meta={cards?.[c.card]} size={52} />
+                    <span
+                      className="tab-nums text-xs font-bold px-1.5 py-0.5 rounded"
+                      style={{ background: "var(--arena-2)", color: "var(--on-arena)" }}
+                    >
+                      −{c.underlevel}
+                    </span>
+                    <span
+                      className="text-[10px] text-center leading-tight"
+                      style={{ color: "var(--ink-2)" }}
+                    >
+                      {c.card}
+                    </span>
                   </div>
-                  <span className="tab-nums text-sm text-right font-medium">
-                    −{c.underlevel} lvl
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </Section>
           )}
         </>
@@ -287,16 +321,27 @@ export default function Home() {
       >
         {insights && (
           <>
-            <Legend negative="pushes toward losses" positive="pushes toward wins" />
-            {insights.top_features.slice(0, 12).map((f) => (
-              <DeltaRow
-                key={f.feature}
-                label={featureLabel(f.feature)}
-                value={f.direction === "wins" ? f.importance : -f.importance}
-                valueLabel={f.importance.toFixed(3)}
-                maxAbs={maxShap}
-              />
-            ))}
+            <p className="coach-line">
+              The model&apos;s strongest signals are{" "}
+              {insights.top_features
+                .slice(0, 3)
+                .map((f) => featureLabel(f.feature).toLowerCase())
+                .join(", ")}{" "}
+              — individual cards matter far less than levels and trophies.
+            </p>
+            <details className="receipts">
+              <summary>show the model&apos;s top features</summary>
+              <Legend negative="pushes toward losses" positive="pushes toward wins" />
+              {insights.top_features.slice(0, 12).map((f) => (
+                <DeltaRow
+                  key={f.feature}
+                  label={featureLabel(f.feature)}
+                  value={f.direction === "wins" ? f.importance : -f.importance}
+                  valueLabel={f.importance.toFixed(3)}
+                  maxAbs={maxShap}
+                />
+              ))}
+            </details>
           </>
         )}
       </Section>

@@ -80,3 +80,32 @@ button:focus-visible {
   outline: 2px solid var(--you);
   outline-offset: 2px;
 }
+
+/* collapsed data receipts under each coach statement */
+details.receipts > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding: 6px 0;
+  user-select: none;
+  list-style: none;
+}
+details.receipts > summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+details.receipts[open] > summary::before {
+  content: "▾ ";
+}
+details.receipts > summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-line {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
