@@ -8,6 +8,8 @@ export function useApi<T>(path: string) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
+    setData(null); // a path change must not show the previous path's data
+    setError(null);
     fetch(`${API_URL}${path}`)
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).detail ?? r.statusText);

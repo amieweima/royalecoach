@@ -42,6 +42,8 @@ export interface ArchetypeMatchup {
 }
 
 export interface CoachReport {
+  /** set when this is a guest scouting report for a typed-in tag */
+  player?: { tag: string; name: string };
   overall: { n: number; wins: number; win_rate: number | null };
   deck: DeckCard[];
   worst_matchups: Matchup[];

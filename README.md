@@ -94,5 +94,10 @@ config-only change).
       (`python -m app.ml.coach`, served at `/coach` and `/insights/global`)
 - [x] Next.js dashboard (`web/`) — scouting-report UI: auto-generated verdict
       headline, matchup + tilt + card-level charts, SHAP model insights
-- [ ] Deck archetype clustering
-- [ ] Deployment (Postgres + API on a host, dashboard on Vercel)
+- [x] Deck archetype clustering (KMeans over the harvested meta; matchups
+      reported per archetype, not per card)
+- [x] Deployment (Render Postgres + API, dashboard on Vercel —
+      https://royalecoach.vercel.app)
+- [x] Scout any player: `/coach/{tag}` builds the full report live from that
+      player's recent battle log (nothing stored), with a tag input on the
+      dashboard

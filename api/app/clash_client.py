@@ -15,6 +15,13 @@ class ClashApiError(RuntimeError):
     pass
 
 
+def normalize_tag(tag: str) -> str:
+    """Clean up a player tag as typed by a human: trim, uppercase, add the
+    leading #, and swap letter O for zero (tags never contain O, but players
+    read 0 as O all the time)."""
+    return "#" + tag.strip().lstrip("#").upper().replace("O", "0")
+
+
 class ClashClient:
     """Thin wrapper over the official Clash Royale API with throttling and
     friendly error messages."""

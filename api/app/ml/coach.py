@@ -197,10 +197,9 @@ def tilt_report(battles: list[Battle]) -> dict:
     }
 
 
-def full_report(session: Session) -> dict:
-    battles = my_battles(session)
-    if not battles:
-        return {"error": "No personal battles banked yet — run the poller."}
+def build_report(battles: list[Battle]) -> dict:
+    """The full coaching report over any list of competitive battles — banked
+    history or a live-fetched battle log (the rows never need to be stored)."""
     return {
         "overall": overall_win_rate(battles),
         "deck": deck_report(battles),
@@ -209,6 +208,13 @@ def full_report(session: Session) -> dict:
         "underleveled_cards": underlevel_report(battles),
         "tilt": tilt_report(battles),
     }
+
+
+def full_report(session: Session) -> dict:
+    battles = my_battles(session)
+    if not battles:
+        return {"error": "No personal battles banked yet — run the poller."}
+    return build_report(battles)
 
 
 def main() -> None:

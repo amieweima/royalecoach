@@ -10,6 +10,7 @@ import {
   featureLabel,
   pct,
 } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { CardChip, DeltaRow, Emote, Section, StatTile, useApi } from "./components";
 
 const RARITY_ORDER: Record<string, number> = {
@@ -187,11 +188,34 @@ function Legend({ negative, positive }: { negative: string; positive: string }) 
 }
 
 export default function Home() {
+  // A typed-in tag switches the whole report to that player, fetched live.
+  const [tag, setTag] = useState<string | null>(null);
+  const [tagInput, setTagInput] = useState("");
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("tag");
+    if (fromUrl) {
+      setTag(fromUrl);
+      setTagInput(fromUrl);
+    }
+  }, []);
+  const scout = (next: string | null) => {
+    setTag(next);
+    setTagInput(next ?? "");
+    window.history.replaceState(
+      null,
+      "",
+      next ? `?tag=${encodeURIComponent(next)}` : window.location.pathname
+    );
+  };
+
   const { data: stats, error: statsError } = useApi<Stats>("/stats");
-  const { data: coach, error: coachError } = useApi<CoachReport>("/coach");
+  const { data: coach, error: coachError } = useApi<CoachReport>(
+    tag ? `/coach/${encodeURIComponent(tag)}` : "/coach"
+  );
   const { data: insights, error: insightsError } =
     useApi<GlobalInsights>("/insights/global");
   const { data: cards } = useApi<CardIndex>("/cards");
+  const scouting = coach?.player ?? null;
 
   const overall = coach?.overall.win_rate ?? 0.5;
   const verdict = coach ? pickVerdict(coach) : null;
@@ -233,6 +257,55 @@ export default function Home() {
         </p>
       </header>
 
+      {/* Scout any player: a tag swaps the whole report to their live battle log. */}
+      <form
+        className="flex items-center gap-2 flex-wrap"
+        onSubmit={(e) => {
+          e.preventDefault();
+          scout(tagInput.trim() || null);
+        }}
+      >
+        <input
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          placeholder="#PLAYERTAG"
+          aria-label="Player tag to scout"
+          className="rounded-lg px-3 py-2 text-sm font-medium tab-nums"
+          style={{
+            background: "var(--arena-3)",
+            border: "1.5px solid rgba(246, 196, 69, 0.4)",
+            color: "var(--on-arena)",
+            width: "12rem",
+          }}
+        />
+        <button
+          type="submit"
+          className="rounded-lg px-4 py-2 text-sm font-bold"
+          style={{ background: "var(--gold)", color: "#3a2a00" }}
+        >
+          Scout
+        </button>
+        {tag && (
+          <button
+            type="button"
+            onClick={() => scout(null)}
+            className="rounded-lg px-3 py-2 text-sm font-medium"
+            style={{
+              background: "var(--arena-3)",
+              border: "1.5px solid rgba(246, 196, 69, 0.4)",
+              color: "var(--on-arena-2)",
+            }}
+          >
+            ✕ back to my report
+          </button>
+        )}
+        <span className="text-xs" style={{ color: "var(--on-arena-2)" }}>
+          {scouting
+            ? `scouting ${scouting.name} ${scouting.tag} · last ${coach?.overall.n} battles`
+            : "enter your player tag (in your profile, under your name) for your own scouting report"}
+        </span>
+      </form>
+
       {/* Main display: your battle deck, styled like the game's deck screen,
           with the upgrade priority built in. */}
       {coach?.deck && coach.deck.length > 0 && (
@@ -248,7 +321,9 @@ export default function Home() {
               Battle Deck
             </h2>
             <span className="text-xs" style={{ color: "var(--on-arena-2)" }}>
-              from your latest ladder battle
+              {scouting
+                ? `from ${scouting.name}'s latest battle`
+                : "from your latest ladder battle"}
             </span>
           </div>
 
@@ -360,7 +435,17 @@ export default function Home() {
         <p className="eyebrow">
           <span style={{ color: "var(--gold)" }}>★</span> scouting report · verdict
         </p>
-        {coachError ? (
+        {coachError && tag ? (
+          <>
+            <h2 className="display text-5xl font-semibold mt-2 leading-tight">
+              Couldn&apos;t scout that tag.
+            </h2>
+            <p className="mt-3 text-base max-w-2xl" style={{ color: "var(--on-arena-2)" }}>
+              {coachError} Tags are in your profile under your name, like
+              #C8LVVCVJJ.
+            </p>
+          </>
+        ) : coachError ? (
           <>
             <h2 className="display text-5xl font-semibold mt-2 leading-tight">
               No battles banked yet.
@@ -409,7 +494,11 @@ export default function Home() {
           </div>
         ) : (
           <h2 className="display text-5xl font-semibold mt-2 leading-tight">
-            {coach ? "No standout weakness yet — keep banking battles." : "Reading your history…"}
+            {coach
+              ? "No standout weakness yet — keep banking battles."
+              : tag
+                ? "Pulling that player's battle log…"
+                : "Reading your history…"}
           </h2>
         )}
       </section>
@@ -417,8 +506,8 @@ export default function Home() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatTile
           label="Your battles"
-          value={String(coach?.overall.n ?? stats?.battles.me ?? "—")}
-          sub="tracked so far — grows as you play"
+          value={String(coach?.overall.n ?? (tag ? "—" : (stats?.battles.me ?? "—")))}
+          sub={scouting ? "from the recent battle log" : "tracked so far — grows as you play"}
           accent="var(--gold)"
         />
         <StatTile

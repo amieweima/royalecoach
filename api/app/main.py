@@ -105,6 +105,49 @@ def coach() -> dict:
     return report
 
 
+# Guest reports are built from a live battle-log fetch; cache them briefly so
+# a page refresh doesn't burn another upstream API call.
+_guest_cache: dict[str, tuple[float, dict]] = {}
+GUEST_CACHE_TTL = 120
+
+
+@app.get("/coach/{tag}")
+def coach_for_tag(tag: str) -> dict:
+    """Scouting report for any player: fetches their recent battle log live
+    and runs the same coach over it. Nothing is stored."""
+    from . import config
+    from .clash_client import ClashApiError, ClashClient, normalize_tag
+    from .ingest.parse import battle_to_row
+    from .ml.coach import build_report, is_competitive
+
+    norm = normalize_tag(tag)
+    cached = _guest_cache.get(norm)
+    if cached and time.time() - cached[0] < GUEST_CACHE_TTL:
+        return cached[1]
+
+    try:
+        log = ClashClient(config.API_TOKEN).battle_log(norm)
+    except ClashApiError as e:
+        raise HTTPException(404 if "404" in str(e) else 502, str(e))
+
+    rows = [
+        r
+        for b in log
+        if (r := battle_to_row(b, source="guest")) is not None and is_competitive(r)
+    ]
+    if not rows:
+        raise HTTPException(
+            404,
+            f"No recent competitive 1v1 battles for {norm} — play a few "
+            "ladder matches and try again.",
+        )
+    rows.sort(key=lambda r: r.battle_time)
+    report = build_report(rows)
+    report["player"] = {"tag": norm, "name": rows[-1].player_name}
+    _guest_cache[norm] = (time.time(), report)
+    return report
+
+
 @app.get("/insights/global")
 def global_insights(top: int = 20) -> dict:
     """Top SHAP features of the trained win model (what drives wins meta-wide)."""
