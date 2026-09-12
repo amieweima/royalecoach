@@ -112,30 +112,63 @@ function modelFindings(ins: GlobalInsights): string[] {
   return findings;
 }
 
-/* The coach states the conclusion; the bars underneath are the receipts. */
-function momentumTakeaway(coach: CoachReport, overall: number): string {
-  const t = coach.tilt.after_two_losses;
-  if (t.win_rate == null || t.n < 5)
-    return "Not enough losing streaks recorded yet to judge tilt.";
-  const rate = `${pct(t.win_rate)} of the next battles (${t.n} so far)`;
-  if (t.win_rate >= overall + 0.1)
-    return `No tilt — after two straight losses you win ${rate}, above your overall. Losing streaks don't rattle you.`;
-  if (t.win_rate <= overall - 0.1)
-    return `Tilt warning — after two straight losses you win only ${rate}. Two losses in a row is your signal to stop.`;
-  return `Losing streaks barely move your results (${rate}) — no tilt pattern.`;
-}
+/* The game plan: every insight the coach has, converted into a ranked list
+   of actions with the evidence attached. Ordered by the size of the gap each
+   one addresses. */
+function gamePlan(
+  coach: CoachReport,
+  cards: CardIndex | undefined,
+  overall: number
+): { action: string; why: string }[] {
+  const plan: { action: string; why: string }[] = [];
 
-function staminaTakeaway(coach: CoachReport, overall: number): string {
+  const arch = coach.worst_archetypes?.[0];
+  if (arch && arch.delta_vs_overall < -0.05)
+    plan.push({
+      action: `Learn the ${arch.cards[0]} matchup`,
+      why: `You win ${pct(arch.win_rate)} against decks built around ${arch.cards
+        .slice(0, 3)
+        .join(" · ")} (${arch.n} battles) vs your ${pct(overall)} average — the biggest hole in your results. Watch how top players defend it, or run it yourself in friendlies to learn its rhythm.`,
+    });
+
   const early = coach.tilt.session_battles_1_to_5;
   const late = coach.tilt.session_battles_6_plus;
-  if (late.win_rate == null || late.n < 5)
-    return "No sessions long enough yet to judge whether you fade.";
-  const earlyRate = early.win_rate ?? overall;
-  if (late.win_rate <= earlyRate - 0.1)
-    return `You fade in long sessions — ${pct(late.win_rate)} from battle 6 on, vs ${pct(earlyRate)} before it. Shorter sessions look better for you.`;
-  if (late.win_rate >= earlyRate + 0.1)
-    return `You warm up — ${pct(late.win_rate)} from battle 6 on, vs ${pct(earlyRate)} early. Long sessions suit you.`;
-  return `Session length doesn't move your results much (${pct(earlyRate)} early vs ${pct(late.win_rate)} late).`;
+  if (late.win_rate != null && late.n >= 5) {
+    const earlyRate = early.win_rate ?? overall;
+    if (late.win_rate <= earlyRate - 0.1)
+      plan.push({
+        action: "Keep sessions to about 5 battles",
+        why: `You win ${pct(earlyRate)} in battles 1–5 of a session but only ${pct(late.win_rate)} from battle 6 on. Stop while you're fresh and bank the trophies.`,
+      });
+    else if (late.win_rate >= earlyRate + 0.1)
+      plan.push({
+        action: "Play longer sessions",
+        why: `You warm up: ${pct(late.win_rate)} from battle 6 on vs ${pct(earlyRate)} early. Your best play comes after you've settled in.`,
+      });
+  }
+
+  const ranking = upgradeRanking(coach.deck ?? [], cards);
+  if (ranking.length)
+    plan.push({
+      action: `Put your next gold into ${ranking[0].card}`,
+      why: `It's ${ranking[0].reason.replace(/\.$/, "")} — and the model ranks card levels as the #2 win factor on ladder.`,
+    });
+
+  const t2 = coach.tilt.after_two_losses;
+  if (t2.win_rate != null && t2.n >= 5) {
+    if (t2.win_rate >= overall + 0.1)
+      plan.push({
+        action: "Don't quit after a losing streak",
+        why: `You win ${pct(t2.win_rate)} of battles right after two straight losses (${t2.n} so far) — streaks don't rattle you, so keep queuing when others would tilt.`,
+      });
+    else if (t2.win_rate <= overall - 0.1)
+      plan.push({
+        action: "Walk away after two straight losses",
+        why: `Your win rate collapses to ${pct(t2.win_rate)} after two losses in a row. Two is your stop signal.`,
+      });
+  }
+
+  return plan;
 }
 
 function Legend({ negative, positive }: { negative: string; positive: string }) {
@@ -470,11 +503,12 @@ export default function Home() {
           </Section>
 
           <Section
-            eyebrow="tilt"
-            title="Do you tilt?"
-            note="How your last result and session length shift your win rate. Small samples mean early signals, not verdicts."
+            eyebrow="game plan"
+            title="How to win more"
+            note="Every insight above, turned into actions — ordered by the size of the gap each one closes."
           >
             {(() => {
+              const plan = gamePlan(coach, cards ?? undefined, overall);
               const t2 = coach.tilt.after_two_losses;
               const mood =
                 t2.win_rate == null || t2.n < 5
@@ -482,24 +516,38 @@ export default function Home() {
                   : t2.win_rate >= overall - 0.1
                     ? "cool-king"
                     : "angry-king";
+              if (!plan.length)
+                return (
+                  <p className="coach-line">
+                    Not enough data for a plan yet — keep playing and check back.
+                  </p>
+                );
               return (
                 <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <p className="coach-line">
-                      <span style={{ color: "var(--gold)" }}>★</span>{" "}
-                      {momentumTakeaway(coach, overall)}
-                    </p>
-                    <p className="coach-line">
-                      <span style={{ color: "var(--gold)" }}>★</span>{" "}
-                      {staminaTakeaway(coach, overall)}
-                    </p>
-                  </div>
+                  <ol className="m-0 pl-0 list-none flex flex-col gap-3 flex-1">
+                    {plan.map((item, i) => (
+                      <li key={item.action} className="flex gap-3">
+                        <span
+                          className="display font-bold tab-nums text-lg w-5 text-right shrink-0"
+                          style={{ color: "var(--gold)" }}
+                        >
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold m-0">{item.action}</p>
+                          <p className="text-sm m-0 mt-0.5" style={{ color: "var(--ink-2)" }}>
+                            {item.why}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                   {mood && <Emote mood={mood} size={72} />}
                 </div>
               );
             })()}
-            <details className="receipts">
-              <summary>show the numbers</summary>
+            <details className="receipts mt-4">
+              <summary>show the tilt and session numbers</summary>
               <Legend negative="worse than your overall" positive="better than your overall" />
               {(
                 [
