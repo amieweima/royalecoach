@@ -9,7 +9,7 @@ import {
   featureLabel,
   pct,
 } from "@/lib/api";
-import { CardChip, DeltaRow, RateRow, Section, StatTile, useApi } from "./components";
+import { CardChip, DeltaRow, Section, StatTile, useApi } from "./components";
 
 function pickVerdict(coach: CoachReport): Matchup | null {
   const losing = coach.worst_matchups.filter((m) => m.delta_vs_overall < 0);
@@ -18,6 +18,32 @@ function pickVerdict(coach: CoachReport): Matchup | null {
   return losing.reduce((worst, m) =>
     m.delta_vs_overall * Math.sqrt(m.n) < worst.delta_vs_overall * Math.sqrt(worst.n) ? m : worst
   );
+}
+
+/* The coach states the conclusion; the bars underneath are the receipts. */
+function momentumTakeaway(coach: CoachReport, overall: number): string {
+  const t = coach.tilt.after_two_losses;
+  if (t.win_rate == null || t.n < 5)
+    return "Not enough losing streaks recorded yet to judge tilt.";
+  const rate = `${pct(t.win_rate)} of the next battles (${t.n} so far)`;
+  if (t.win_rate >= overall + 0.1)
+    return `No tilt — after two straight losses you win ${rate}, above your overall. Losing streaks don't rattle you.`;
+  if (t.win_rate <= overall - 0.1)
+    return `Tilt warning — after two straight losses you win only ${rate}. Two losses in a row is your signal to stop.`;
+  return `Losing streaks barely move your results (${rate}) — no tilt pattern.`;
+}
+
+function staminaTakeaway(coach: CoachReport, overall: number): string {
+  const early = coach.tilt.session_battles_1_to_5;
+  const late = coach.tilt.session_battles_6_plus;
+  if (late.win_rate == null || late.n < 5)
+    return "No sessions long enough yet to judge whether you fade.";
+  const earlyRate = early.win_rate ?? overall;
+  if (late.win_rate <= earlyRate - 0.1)
+    return `You fade in long sessions — ${pct(late.win_rate)} from battle 6 on, vs ${pct(earlyRate)} before it. Shorter sessions look better for you.`;
+  if (late.win_rate >= earlyRate + 0.1)
+    return `You warm up — ${pct(late.win_rate)} from battle 6 on, vs ${pct(earlyRate)} early. Long sessions suit you.`;
+  return `Session length doesn't move your results much (${pct(earlyRate)} early vs ${pct(late.win_rate)} late).`;
 }
 
 function Legend({ negative, positive }: { negative: string; positive: string }) {
@@ -163,15 +189,53 @@ export default function Home() {
 
           <Section
             eyebrow="tilt"
-            title="Momentum and session length"
-            note="Win rate by situation, read against the black tick — your overall rate. Small samples are honest samples; the n is on every row."
+            title="Do you tilt?"
+            note={`Every bar below is the gap between your win rate in that situation and your ${pct(
+              overall
+            )} overall — red means you do worse than usual there, blue means better. Battle counts are on every row; small numbers mean early signals, not verdicts.`}
           >
-            <RateRow label="After a win" sub={`${coach.tilt.after_win.n} battles`} rate={coach.tilt.after_win.win_rate} reference={overall} />
-            <RateRow label="After a loss" sub={`${coach.tilt.after_loss.n} battles`} rate={coach.tilt.after_loss.win_rate} reference={overall} />
-            <RateRow label="After two straight losses" sub={`${coach.tilt.after_two_losses.n} battles`} rate={coach.tilt.after_two_losses.win_rate} reference={overall} />
-            <div className="my-2 border-t" style={{ borderColor: "var(--hairline)" }} />
-            <RateRow label="Battles 1–5 of a session" sub={`${coach.tilt.session_battles_1_to_5.n} battles`} rate={coach.tilt.session_battles_1_to_5.win_rate} reference={overall} />
-            <RateRow label="Battle 6 onward" sub={`${coach.tilt.session_battles_6_plus.n} battles`} rate={coach.tilt.session_battles_6_plus.win_rate} reference={overall} />
+            <Legend negative="worse than your overall" positive="better than your overall" />
+
+            <p className="text-sm font-semibold mt-4 mb-1">
+              <span style={{ color: "var(--gold)" }}>★</span>{" "}
+              {momentumTakeaway(coach, overall)}
+            </p>
+            {(
+              [
+                ["After a win", coach.tilt.after_win],
+                ["After a loss", coach.tilt.after_loss],
+                ["After two straight losses", coach.tilt.after_two_losses],
+              ] as const
+            ).map(([label, r]) => (
+              <DeltaRow
+                key={label}
+                label={label}
+                sub={`${r.n} battles`}
+                value={(r.win_rate ?? overall) - overall}
+                valueLabel={pct(r.win_rate)}
+                maxAbs={0.35}
+              />
+            ))}
+
+            <p className="text-sm font-semibold mt-5 mb-1">
+              <span style={{ color: "var(--gold)" }}>★</span>{" "}
+              {staminaTakeaway(coach, overall)}
+            </p>
+            {(
+              [
+                ["Battles 1–5 of a session", coach.tilt.session_battles_1_to_5],
+                ["Battle 6 onward", coach.tilt.session_battles_6_plus],
+              ] as const
+            ).map(([label, r]) => (
+              <DeltaRow
+                key={label}
+                label={label}
+                sub={`${r.n} battles`}
+                value={(r.win_rate ?? overall) - overall}
+                valueLabel={pct(r.win_rate)}
+                maxAbs={0.35}
+              />
+            ))}
           </Section>
 
           {coach.underleveled_cards.length > 0 && (

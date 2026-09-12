@@ -115,54 +115,6 @@ export function DeltaRow({
   );
 }
 
-/* A single-measure rate bar (win rate 0-100%) with a reference tick at the
-   overall rate, so every number is read against the baseline it should be. */
-export function RateRow({
-  label,
-  sub,
-  rate,
-  reference,
-}: {
-  label: string;
-  sub?: string;
-  rate: number | null;
-  reference: number;
-}) {
-  return (
-    <div className="grid items-center gap-3 py-1.5" style={{ gridTemplateColumns: "minmax(150px, 1fr) 2fr 72px" }}>
-      <div className="min-w-0">
-        <span className="text-sm font-medium block truncate">{label}</span>
-        {sub && <span className="text-xs" style={{ color: "var(--muted)" }}>{sub}</span>}
-      </div>
-      <div
-        className="relative h-4 rounded"
-        style={{ background: "var(--paper)" }}
-        role="img"
-        aria-label={`${label}: ${rate == null ? "no data" : Math.round(rate * 100) + "%"}`}
-      >
-        {rate != null && (
-          <div
-            className="absolute inset-y-0.5 left-0"
-            style={{
-              width: `${rate * 100}%`,
-              background: "var(--you)",
-              borderRadius: "0 4px 4px 0",
-            }}
-          />
-        )}
-        <div
-          className="absolute -inset-y-0.5 w-0.5"
-          style={{ left: `${reference * 100}%`, background: "var(--ink)" }}
-          title={`overall ${Math.round(reference * 100)}%`}
-        />
-      </div>
-      <span className="tab-nums text-sm text-right font-medium">
-        {rate == null ? "—" : `${Math.round(rate * 100)}%`}
-      </span>
-    </div>
-  );
-}
-
 export function StatTile({
   label,
   value,
