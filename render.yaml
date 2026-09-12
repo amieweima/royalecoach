@@ -18,6 +18,11 @@ services:
         sync: false # your Vercel URL, e.g. https://royalecoach.vercel.app
       - key: ENABLE_POLLER
         value: "1"
+      # Render's outbound IPs are ranges, which Supercell's per-IP key
+      # allowlist can't express — route through the RoyaleAPI proxy and
+      # allowlist its static IP (45.79.218.79) on the key instead.
+      - key: CLASH_API_BASE
+        value: https://proxy.royaleapi.dev/v1
       - key: DATABASE_URL
         fromDatabase:
           name: royalecoach-db

@@ -67,8 +67,11 @@ config-only change).
   Render choose *New → Blueprint*, point it at this repo, then fill in
   `CLASH_API_TOKEN`, `MY_PLAYER_TAG`, and `ALLOWED_ORIGINS` (your dashboard
   URL). `ENABLE_POLLER=1` makes the API poll your battles in-process, so no
-  separate worker is needed. Add the service's outbound IPs (shown in Render's
-  service settings) to your key's allowed list at developer.clashroyale.com.
+  separate worker is needed. Render's outbound IPs are CIDR ranges, which
+  Supercell's key allowlist can't express, so the blueprint routes API calls
+  through the [RoyaleAPI proxy](https://docs.royaleapi.com/proxy.html) via
+  `CLASH_API_BASE` — create a key at developer.clashroyale.com allowing the
+  proxy's static IP `45.79.218.79` and use that as `CLASH_API_TOKEN`.
 - **Dashboard (Vercel):** import the repo, set the root directory to `web/`,
   and add the env var `NEXT_PUBLIC_API_URL` pointing at the Render API URL.
 - After the first deploy, seed the global dataset and models from Render's

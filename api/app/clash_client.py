@@ -1,9 +1,14 @@
+import os
 import time
 from urllib.parse import quote
 
 import httpx
 
-BASE = "https://api.clashroyale.com/v1"
+# Cloud hosts (e.g. Render) have unpredictable outbound IPs, which the official
+# API's per-key IP allowlist can't express. Point CLASH_API_BASE at the
+# RoyaleAPI proxy (https://proxy.royaleapi.dev/v1) there and allowlist its
+# single static IP (45.79.218.79) on the key instead.
+BASE = os.getenv("CLASH_API_BASE", "https://api.clashroyale.com/v1")
 
 
 class ClashApiError(RuntimeError):
