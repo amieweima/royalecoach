@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ClashCoach scouting-report tokens.
+   Chart chrome + the blue↔red diverging pair come from a validated palette;
+   blue = you (your team color in-game), red = the opponent. Single committed
+   light look. */
+:root {
+  --paper: #f9f9f7;
+  --card: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --you: #2a78d6;
+  --you-deep: #1c5cab;
+  --you-soft: #86b6ef;
+  --them: #e34948;
+  --gold: #eda100;
+  /* the arena: Clash Royale's own UI floats light panels on saturated blue */
+  --arena-1: #2456c8;
+  --arena-2: #16337e;
+  --arena-3: #101f4f;
+  --on-arena: #ffffff;
+  --on-arena-2: #c9d4f2;
+  /* card rarity rings */
+  --rarity-common: #b9c3cf;
+  --rarity-rare: #e8862d;
+  --rarity-epic: #9b59d0;
+  --rarity-legendary: #f6c445;
+  --rarity-champion: #f6c445;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, var(--arena-1) 0%, var(--arena-2) 55%, var(--arena-3) 100%) fixed, var(--arena-2);
+  color: var(--ink);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.display {
+  font-family: "Clash Display", var(--font-archivo), system-ui, sans-serif;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid rgba(11, 11, 11, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 2px 0 rgba(11, 20, 45, 0.35);
+}
+
+.on-arena .eyebrow {
+  color: var(--on-arena-2);
+}
+
+.card-chip {
+  height: 30px;
+  width: auto;
+  border-radius: 6px;
+  border: 2px solid var(--rarity-common);
+  background: var(--arena-2);
+  flex-shrink: 0;
+}
+
+.tab-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}

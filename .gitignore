@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+clashcoach.db
+node_modules/
+.next/
+api/models/
+api/reports/
+.pytest_cache/

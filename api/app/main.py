@@ -1,0 +1,100 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
+
+from .db import SessionLocal, init_db
+from .ml.coach import full_report
+from .models import Battle, PlayerSeen
+
+app = FastAPI(title="ClashCoach API")
+
+# the Next.js dev server; tighten to the deployed dashboard origin in prod
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"ok": True}
+
+
+@app.get("/stats")
+def stats() -> dict:
+    """Quick look at how much data we've banked so far."""
+    with SessionLocal() as s:
+        by_source = dict(
+            s.query(Battle.source, func.count()).group_by(Battle.source).all()
+        )
+        first, last = s.query(
+            func.min(Battle.battle_time), func.max(Battle.battle_time)
+        ).one()
+        return {
+            "battles": by_source,
+            "players_in_frontier": s.query(PlayerSeen).count(),
+            "first_battle": first,
+            "last_battle": last,
+        }
+
+
+_cards_cache: dict | None = None
+
+
+@app.get("/cards")
+def cards() -> dict:
+    """Card metadata for the dashboard: name -> {icon, rarity, elixir}.
+    Fetched once from the official API per server process."""
+    global _cards_cache
+    if _cards_cache is None:
+        from . import config
+        from .clash_client import ClashClient
+
+        items = ClashClient(config.API_TOKEN).cards()
+        _cards_cache = {
+            c["name"]: {
+                "icon": (c.get("iconUrls") or {}).get("medium"),
+                "rarity": c.get("rarity"),
+                "elixir": c.get("elixirCost"),
+            }
+            for c in items
+        }
+    return _cards_cache
+
+
+@app.get("/coach")
+def coach() -> dict:
+    """Personal coaching report: matchups, underleveled cards, tilt patterns."""
+    with SessionLocal() as s:
+        report = full_report(s)
+    if "error" in report:
+        raise HTTPException(status_code=404, detail=report["error"])
+    return report
+
+
+@app.get("/insights/global")
+def global_insights(top: int = 20) -> dict:
+    """Top SHAP features of the trained win model (what drives wins meta-wide)."""
+    import joblib
+
+    from .ml.explain import shap_values_for, top_features
+    from .ml.train import MODEL_DIR
+
+    path = MODEL_DIR / "win_model.joblib"
+    if not path.exists():
+        raise HTTPException(404, "No trained model — run `python -m app.ml.train`.")
+    # Safe: artifact is written locally by app.ml.train, never downloaded.
+    bundle = joblib.load(path)
+    with SessionLocal() as s:
+        from .ml.features import battles_to_frame
+
+        frame = battles_to_frame(s, source=bundle.get("source"))
+    sv, X = shap_values_for(bundle, frame)
+    return {"n_battles": len(X), "top_features": top_features(sv, X, n=top)}
