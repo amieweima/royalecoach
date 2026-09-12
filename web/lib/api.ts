@@ -27,8 +27,16 @@ export interface UnderlevelCard {
   win_rate: number;
 }
 
+export interface DeckCard {
+  card: string;
+  level: number;
+  max: number;
+  underlevel: number;
+}
+
 export interface CoachReport {
   overall: { n: number; wins: number; win_rate: number | null };
+  deck: DeckCard[];
   worst_matchups: Matchup[];
   underleveled_cards: UnderlevelCard[];
   tilt: {

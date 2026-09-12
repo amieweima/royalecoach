@@ -3,13 +3,64 @@
 import {
   CardIndex,
   CoachReport,
+  DeckCard,
   GlobalInsights,
   Matchup,
   Stats,
   featureLabel,
   pct,
 } from "@/lib/api";
-import { CardChip, DeltaRow, Section, StatTile, useApi } from "./components";
+import { CardChip, DeltaRow, Emote, Section, StatTile, useApi } from "./components";
+
+const RARITY_ORDER: Record<string, number> = {
+  common: 0,
+  rare: 1,
+  epic: 2,
+  legendary: 3,
+  champion: 4,
+};
+
+const RARITY_RING: Record<string, string> = {
+  common: "var(--rarity-common)",
+  rare: "var(--rarity-rare)",
+  epic: "var(--rarity-epic)",
+  legendary: "var(--rarity-legendary)",
+  champion: "var(--rarity-champion)",
+};
+
+/* Upgrade order: biggest level deficit first (largest stat handicap), and
+   within a tie, cheapest rarity first — commons close a level for a fraction
+   of what an epic costs, so they're the fastest win rate available. */
+function upgradeRanking(deck: DeckCard[], cards?: CardIndex) {
+  const ranked = deck
+    .filter((c) => c.underlevel > 0)
+    .map((c) => ({
+      ...c,
+      rarity: cards?.[c.card]?.rarity?.toLowerCase() ?? "common",
+    }))
+    .sort(
+      (a, b) =>
+        b.underlevel - a.underlevel ||
+        (RARITY_ORDER[a.rarity] ?? 0) - (RARITY_ORDER[b.rarity] ?? 0)
+    );
+  return ranked.map((c, i) => {
+    const gap =
+      i > 0 && ranked[i - 1].underlevel === c.underlevel
+        ? `also ${c.underlevel} below max`
+        : c.underlevel > 1
+          ? `${c.underlevel} levels below max — the biggest stat handicap in your deck`
+          : `1 level from max`;
+    const cost =
+      c.rarity === "common"
+        ? "a common, so it's the cheapest win rate you can buy"
+        : c.rarity === "rare"
+          ? "a rare — still cheap to level"
+          : c.rarity === "epic"
+            ? "an epic — pricier, but the stat jump is real"
+            : `a ${c.rarity} — expensive, queue it after the cheap wins`;
+    return { ...c, reason: `${gap}, and it's ${cost}.` };
+  });
+}
 
 function pickVerdict(coach: CoachReport): Matchup | null {
   const losing = coach.worst_matchups.filter((m) => m.delta_vs_overall < 0);
@@ -101,9 +152,6 @@ export default function Home() {
   const maxShap = insights
     ? Math.max(...insights.top_features.map((f) => f.importance), 0.0001)
     : 1;
-  const maxUnder = coach
-    ? Math.max(...coach.underleveled_cards.map((c) => c.underlevel), 1)
-    : 1;
 
   if (statsError) {
     return (
@@ -136,6 +184,128 @@ export default function Home() {
         </p>
       </header>
 
+      {/* Main display: your battle deck, styled like the game's deck screen,
+          with the upgrade priority built in. */}
+      {coach?.deck && coach.deck.length > 0 && (
+        <section
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "var(--arena-3)",
+            border: "2px solid rgba(246, 196, 69, 0.55)",
+          }}
+        >
+          <div className="px-5 md:px-6 pt-5 flex items-baseline justify-between flex-wrap gap-2">
+            <h2 className="display text-2xl font-bold" style={{ color: "var(--gold)" }}>
+              Battle Deck
+            </h2>
+            <span className="text-xs" style={{ color: "var(--on-arena-2)" }}>
+              from your latest ladder battle
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 md:gap-3 px-5 md:px-6 py-4">
+            {coach.deck.map((c) => {
+              const meta = cards?.[c.card];
+              const maxed = c.underlevel === 0;
+              return (
+                <div
+                  key={c.card}
+                  className="relative rounded-lg overflow-hidden"
+                  style={{
+                    background: "var(--arena-2)",
+                    border: `2px solid ${RARITY_RING[meta?.rarity?.toLowerCase() ?? "common"] ?? "var(--rarity-common)"}`,
+                  }}
+                >
+                  {meta?.icon && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={meta.icon} alt={c.card} className="w-full h-auto block" />
+                  )}
+                  {meta?.elixir != null && (
+                    <span
+                      className="absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold"
+                      style={{
+                        background: "#b34fd3",
+                        color: "#fff",
+                        border: "1.5px solid #fff",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      {meta.elixir}
+                    </span>
+                  )}
+                  <div
+                    className="text-center text-xs font-bold py-1"
+                    style={{
+                      background: maxed ? "var(--gold)" : "var(--arena-1)",
+                      color: maxed ? "#3a2a00" : "var(--on-arena)",
+                    }}
+                  >
+                    Level {c.level}
+                    {!maxed && (
+                      <span style={{ opacity: 0.75 }}> · −{c.underlevel}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const costs = coach.deck
+              .map((c) => cards?.[c.card]?.elixir)
+              .filter((e): e is number => e != null);
+            if (!costs.length) return null;
+            const avg = costs.reduce((a, b) => a + b, 0) / costs.length;
+            return (
+              <p
+                className="text-center text-sm font-semibold pb-4 flex items-center justify-center gap-1.5"
+                style={{ color: "var(--on-arena)" }}
+              >
+                <svg width="12" height="16" viewBox="0 0 12 16" aria-hidden="true">
+                  <path
+                    d="M6 0 C6 0 0 8 0 11 a6 5 0 0 0 12 0 C12 8 6 0 6 0Z"
+                    fill="#b34fd3"
+                  />
+                </svg>
+                Average elixir cost: {avg.toFixed(1)}
+              </p>
+            );
+          })()}
+
+          {(() => {
+            const ranking = upgradeRanking(coach.deck, cards ?? undefined);
+            if (!ranking.length) return null;
+            return (
+              <div
+                className="px-5 md:px-6 pb-5 pt-4"
+                style={{ borderTop: "1px solid rgba(246, 196, 69, 0.25)" }}
+              >
+                <p className="eyebrow" style={{ color: "var(--gold)" }}>
+                  upgrade next
+                </p>
+                <ol className="m-0 mt-2 pl-0 list-none flex flex-col gap-2">
+                  {ranking.map((c, i) => (
+                    <li key={c.card} className="flex items-center gap-3">
+                      <span
+                        className="display font-bold tab-nums w-5 text-right"
+                        style={{ color: "var(--gold)" }}
+                      >
+                        {i + 1}
+                      </span>
+                      <CardChip name={c.card} meta={cards?.[c.card]} size={34} />
+                      <span className="text-sm" style={{ color: "var(--on-arena)" }}>
+                        <strong>{c.card}</strong>{" "}
+                        <span style={{ color: "var(--on-arena-2)" }}>— {c.reason}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            );
+          })()}
+        </section>
+      )}
+
       {/* The coach's verdict: the single most damning finding, as a sentence. */}
       <section className="py-6 on-arena" style={{ color: "var(--on-arena)" }}>
         <p className="eyebrow">
@@ -167,15 +337,18 @@ export default function Home() {
                 first thing to train.
               </p>
             </div>
-            {cards?.[verdict.card]?.icon && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={cards[verdict.card].icon!}
-                alt={verdict.card}
-                className="h-32 w-auto drop-shadow-lg"
-                style={{ transform: "rotate(3deg)" }}
-              />
-            )}
+            <div className="flex items-end gap-2">
+              <Emote mood="crying-king" size={88} />
+              {cards?.[verdict.card]?.icon && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cards[verdict.card].icon!}
+                  alt={verdict.card}
+                  className="h-32 w-auto drop-shadow-lg"
+                  style={{ transform: "rotate(3deg)" }}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <h2 className="display text-5xl font-semibold mt-2 leading-tight">
@@ -258,14 +431,30 @@ export default function Home() {
             title="Do you tilt?"
             note="How your last result and session length shift your win rate. Small samples mean early signals, not verdicts."
           >
-            <p className="coach-line">
-              <span style={{ color: "var(--gold)" }}>★</span>{" "}
-              {momentumTakeaway(coach, overall)}
-            </p>
-            <p className="coach-line">
-              <span style={{ color: "var(--gold)" }}>★</span>{" "}
-              {staminaTakeaway(coach, overall)}
-            </p>
+            {(() => {
+              const t2 = coach.tilt.after_two_losses;
+              const mood =
+                t2.win_rate == null || t2.n < 5
+                  ? null
+                  : t2.win_rate >= overall - 0.1
+                    ? "cool-king"
+                    : "angry-king";
+              return (
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <p className="coach-line">
+                      <span style={{ color: "var(--gold)" }}>★</span>{" "}
+                      {momentumTakeaway(coach, overall)}
+                    </p>
+                    <p className="coach-line">
+                      <span style={{ color: "var(--gold)" }}>★</span>{" "}
+                      {staminaTakeaway(coach, overall)}
+                    </p>
+                  </div>
+                  {mood && <Emote mood={mood} size={72} />}
+                </div>
+              );
+            })()}
             <details className="receipts">
               <summary>show the numbers</summary>
               <Legend negative="worse than your overall" positive="better than your overall" />
@@ -290,46 +479,6 @@ export default function Home() {
             </details>
           </Section>
 
-          {coach.underleveled_cards.length > 0 && (
-            <Section
-              eyebrow="card levels"
-              title="Your upgrade queue"
-              note="Levels are the one weakness you can fix without changing how you play."
-            >
-              {(() => {
-                const worst = coach.underleveled_cards.filter(
-                  (c) => c.underlevel === maxUnder
-                );
-                return (
-                  <p className="coach-line">
-                    {worst.map((c) => c.card).join(", ")}{" "}
-                    {worst.length > 1 ? "are" : "is"} furthest behind at{" "}
-                    {maxUnder} {maxUnder > 1 ? "levels" : "level"} below max —
-                    upgrade {worst.length > 1 ? "those" : "it"} first.
-                  </p>
-                );
-              })()}
-              <div className="flex flex-wrap gap-4 mt-2">
-                {coach.underleveled_cards.slice(0, 10).map((c) => (
-                  <div key={c.card} className="flex flex-col items-center gap-1 w-16">
-                    <CardChip name={c.card} meta={cards?.[c.card]} size={52} />
-                    <span
-                      className="tab-nums text-xs font-bold px-1.5 py-0.5 rounded"
-                      style={{ background: "var(--arena-2)", color: "var(--on-arena)" }}
-                    >
-                      −{c.underlevel}
-                    </span>
-                    <span
-                      className="text-[10px] text-center leading-tight"
-                      style={{ color: "var(--ink-2)" }}
-                    >
-                      {c.card}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
         </>
       )}
 

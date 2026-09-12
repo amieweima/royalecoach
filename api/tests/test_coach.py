@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from conftest import DECK_A, DECK_B, deck_json, make_battle
 
 from app.ml.coach import (
+    deck_report,
     matchup_report,
     my_battles,
     tilt_report,
@@ -62,6 +63,16 @@ def test_level_capped_casual_battles_ignored(session):
     report = underlevel_report(mine)
     # the capped reading must not inflate the deficit
     assert all(r["underlevel"] == 1 for r in report)
+
+
+def test_deck_report_display_levels(session):
+    # rarity-relative API levels: 12 of max 14 = display level 14 (2 below 16)
+    session.add(make_battle(0, p_deck=deck_json(DECK_A, level=12, max_level=14), source="me"))
+    session.commit()
+
+    deck = deck_report(my_battles(session))
+    assert len(deck) == 8
+    assert all(c["level"] == 14 and c["max"] == 16 and c["underlevel"] == 2 for c in deck)
 
 
 def test_maxed_cards_not_reported(session):

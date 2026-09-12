@@ -22,6 +22,24 @@ export function useApi<T>(path: string) {
   return { data, error };
 }
 
+/* In-game emotes the coach reacts with. Files live in web/public/emotes/
+   (e.g. crying-king.png) — the component vanishes gracefully if a file
+   hasn't been added yet, so missing emotes never break the page. */
+export function Emote({ mood, size = 64 }: { mood: string; size?: number }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/emotes/${mood}.png`}
+      alt=""
+      style={{ height: size, width: "auto", flexShrink: 0 }}
+      onError={() => setOk(false)}
+      loading="lazy"
+    />
+  );
+}
+
 const RARITY_VAR: Record<string, string> = {
   common: "var(--rarity-common)",
   rare: "var(--rarity-rare)",

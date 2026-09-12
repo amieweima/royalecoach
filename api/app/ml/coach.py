@@ -68,6 +68,30 @@ def matchup_report(battles: list[Battle], min_n: int = MIN_MATCHUP_N) -> list[di
     return sorted(out, key=lambda r: r["win_rate"])
 
 
+# The API reports levels on a rarity-relative scale (a legendary maxes at 8,
+# a common at 16); every rarity's max lines up at the same display level.
+DISPLAY_MAX_LEVEL = 16
+
+
+def deck_report(battles: list[Battle]) -> list[dict]:
+    """Your current deck from your latest competitive battle, with in-game
+    display levels (the numbers the player actually sees)."""
+    deck = json.loads(battles[-1].player_deck_json)
+    out = []
+    for c in deck:
+        level = c.get("level") or 0
+        max_level = c.get("maxLevel") or 0
+        out.append(
+            {
+                "card": c.get("name"),
+                "level": level + (DISPLAY_MAX_LEVEL - max_level),
+                "max": DISPLAY_MAX_LEVEL,
+                "underlevel": max_level - level,
+            }
+        )
+    return out
+
+
 def underlevel_report(battles: list[Battle]) -> list[dict]:
     """Your cards that are below max level, with your win rate when playing them.
 
@@ -144,6 +168,7 @@ def full_report(session: Session) -> dict:
         return {"error": "No personal battles banked yet — run the poller."}
     return {
         "overall": overall_win_rate(battles),
+        "deck": deck_report(battles),
         "worst_matchups": matchup_report(battles),
         "underleveled_cards": underlevel_report(battles),
         "tilt": tilt_report(battles),
