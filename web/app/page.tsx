@@ -20,6 +20,31 @@ function pickVerdict(coach: CoachReport): Matchup | null {
   );
 }
 
+/* Translate SHAP rankings into findings a player can use. Order is the
+   insight: what matters most, next, and (pointedly) least. */
+function modelFindings(ins: GlobalInsights): string[] {
+  const feats = ins.top_features;
+  const trophy = feats.find((f) => f.feature === "trophy_diff");
+  const underlevel = feats.find((f) => f.feature.includes("underlevel"));
+  const topCard = feats.find((f) => f.feature.includes("::"));
+  const findings: string[] = [];
+  if (trophy)
+    findings.push(
+      "Rating gap decides most: the higher-rated player usually wins, and no deck choice comes close to outweighing it."
+    );
+  if (underlevel)
+    findings.push(
+      "Card levels are the next biggest edge — an underleveled deck loses games it should win. (That's your upgrade queue above.)"
+    );
+  if (trophy && topCard) {
+    const ratio = Math.round(trophy.importance / topCard.importance);
+    findings.push(
+      `No single card dominates. The strongest card signal (${topCard.feature.slice(3)}) matters ~${ratio}× less than rating — the meta is balanced, so skill and levels beat deck-switching.`
+    );
+  }
+  return findings;
+}
+
 /* The coach states the conclusion; the bars underneath are the receipts. */
 function momentumTakeaway(coach: CoachReport, overall: number): string {
   const t = coach.tilt.after_two_losses;
@@ -310,27 +335,37 @@ export default function Home() {
 
       <Section
         eyebrow="the model"
-        title="What decides top-ladder battles"
+        title="What the AI learned from the ladder"
         note={
           insights
-            ? `SHAP feature attributions from the win-probability model, over ${insights.n_battles.toLocaleString()} harvested battles. Honest finding: at top ladder every deck is viable, so deck features alone beat a coin flip only slightly — outcomes are mostly skill.`
+            ? `Findings from a win-prediction model trained on ${insights.n_battles.toLocaleString()} top-ladder battles, ranked by how much each factor actually moves the odds.`
             : insightsError
               ? "No trained model found — run `python -m app.ml.train` in api/."
-              : "Computing SHAP attributions… (this one takes a few seconds)"
+              : "Asking the model what it learned… (a few seconds)"
         }
       >
         {insights && (
           <>
-            <p className="coach-line">
-              The model&apos;s strongest signals are{" "}
-              {insights.top_features
-                .slice(0, 3)
-                .map((f) => featureLabel(f.feature).toLowerCase())
-                .join(", ")}{" "}
-              — individual cards matter far less than levels and trophies.
-            </p>
-            <details className="receipts">
-              <summary>show the model&apos;s top features</summary>
+            <ol className="m-0 pl-0 list-none flex flex-col gap-2">
+              {modelFindings(insights).map((finding, i) => (
+                <li key={i} className="coach-line flex gap-3" style={{ margin: 0 }}>
+                  <span
+                    className="display font-semibold tab-nums"
+                    style={{ color: "var(--gold)" }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span>{finding}</span>
+                </li>
+              ))}
+            </ol>
+            <details className="receipts mt-3">
+              <summary>for the curious: the raw model internals</summary>
+              <p className="text-xs mb-2" style={{ color: "var(--muted)" }}>
+                SHAP attributions — bar length is how strongly each feature
+                pulls the model&apos;s prediction on average; direction is which
+                way it pulls.
+              </p>
               <Legend negative="pushes toward losses" positive="pushes toward wins" />
               {insights.top_features.slice(0, 12).map((f) => (
                 <DeltaRow
