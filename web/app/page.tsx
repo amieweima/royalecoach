@@ -415,10 +415,30 @@ export default function Home() {
       </section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile label="Your battles" value={String(stats?.battles.me ?? "—")} sub="banked by the poller" accent="var(--gold)" />
-        <StatTile label="Win rate" value={pct(coach?.overall.win_rate)} sub={coach ? `${coach.overall.wins} wins` : undefined} accent="var(--you)" />
-        <StatTile label="Sessions" value={String(coach?.tilt.sessions ?? "—")} sub="30-min gap = new session" accent="var(--rarity-epic)" />
-        <StatTile label="Training set" value={(stats?.battles.ladder ?? 0).toLocaleString()} sub="top-ladder battles harvested" accent="var(--rarity-rare)" />
+        <StatTile
+          label="Your battles"
+          value={String(coach?.overall.n ?? stats?.battles.me ?? "—")}
+          sub="tracked so far — grows as you play"
+          accent="var(--gold)"
+        />
+        <StatTile
+          label="Win rate"
+          value={pct(coach?.overall.win_rate)}
+          sub={coach ? `${coach.overall.wins} wins · ${coach.overall.n - coach.overall.wins} losses` : undefined}
+          accent="var(--you)"
+        />
+        <StatTile
+          label="Sessions"
+          value={String(coach?.tilt.sessions ?? "—")}
+          sub="separate sittings you've played"
+          accent="var(--rarity-epic)"
+        />
+        <StatTile
+          label="AI training set"
+          value={(stats?.battles.ladder ?? 0).toLocaleString()}
+          sub="top-player battles the model learned from"
+          accent="var(--rarity-rare)"
+        />
       </div>
 
       {coach && (
