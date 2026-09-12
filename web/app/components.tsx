@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { API_URL, CardMeta } from "@/lib/api";
 
+/* Free-tier hosting naps between visitors, so a first fetch can time out or
+   drop while the API wakes (up to ~1 min). Retry through that window before
+   declaring an error; a 4xx is a real answer and fails immediately. */
+const RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000];
+
 export function useApi<T>(path: string) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -10,13 +15,26 @@ export function useApi<T>(path: string) {
     let alive = true;
     setData(null); // a path change must not show the previous path's data
     setError(null);
-    fetch(`${API_URL}${path}`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).detail ?? r.statusText);
-        return r.json();
-      })
-      .then((d) => alive && setData(d))
-      .catch((e) => alive && setError(String(e.message ?? e)));
+    const attempt = (retry: number) => {
+      fetch(`${API_URL}${path}`)
+        .then(async (r) => {
+          if (!r.ok) {
+            const detail = (await r.json()).detail ?? r.statusText;
+            throw Object.assign(new Error(detail), { permanent: r.status < 500 });
+          }
+          return r.json();
+        })
+        .then((d) => alive && setData(d))
+        .catch((e) => {
+          if (!alive) return;
+          if (!e.permanent && retry < RETRY_DELAYS_MS.length) {
+            setTimeout(() => alive && attempt(retry + 1), RETRY_DELAYS_MS[retry]);
+          } else {
+            setError(String(e.message ?? e));
+          }
+        });
+    };
+    attempt(0);
     return () => {
       alive = false;
     };

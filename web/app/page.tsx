@@ -233,11 +233,11 @@ export default function Home() {
           RoyaleCoach
         </h1>
         <div className="card p-6">
-          <p className="font-medium mb-1">The API isn&apos;t reachable.</p>
+          <p className="font-medium mb-1">The coach&apos;s server isn&apos;t answering.</p>
           <p className="text-sm" style={{ color: "var(--ink-2)" }}>
-            Start it from <code>api/</code> with{" "}
-            <code>python -m uvicorn app.main:app --reload</code>, then reload
-            this page.
+            It may just be waking up from a nap — reload this page in a
+            minute. (Running locally? Start the API from <code>api/</code>{" "}
+            with <code>python -m uvicorn app.main:app --reload</code>.)
           </p>
         </div>
       </main>
@@ -689,7 +689,7 @@ export default function Home() {
           insights
             ? `Findings from a win-prediction model trained on ${insights.n_battles.toLocaleString()} top-ladder battles, ranked by how much each factor actually moves the odds.`
             : insightsError
-              ? "No trained model found — run `python -m app.ml.train` in api/."
+              ? "Couldn't load the model's findings — the coach's server may still be waking up. Refresh in a minute."
               : "Asking the model what it learned… (a few seconds)"
         }
       >
