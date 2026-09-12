@@ -5,6 +5,7 @@ services:
   - type: web
     name: royalecoach-api
     runtime: python
+    plan: free # Render defaults blueprints to the paid Starter plan otherwise
     rootDir: api
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
