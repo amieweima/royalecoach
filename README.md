@@ -74,9 +74,11 @@ config-only change).
   proxy's static IP `45.79.218.79` and use that as `CLASH_API_TOKEN`.
 - **Dashboard (Vercel):** import the repo, set the root directory to `web/`,
   and add the env var `NEXT_PUBLIC_API_URL` pointing at the Render API URL.
-- After the first deploy, seed the global dataset and models from Render's
-  shell: `python -m app.ingest.harvest`, `python -m app.ml.train`,
-  `python -m app.ml.archetypes`.
+- Trained artifacts (`api/models/`: win model, archetypes, precomputed SHAP
+  insights) ship in the repo — the free tier has no shell and can't afford
+  to train or explain in the cloud. Retrain locally
+  (`python -m app.ml.train`, `python -m app.ml.archetypes`,
+  `python -m app.ml.export_insights`), commit, push.
 
 ## Roadmap
 

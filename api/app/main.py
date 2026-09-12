@@ -148,36 +148,22 @@ def coach_for_tag(tag: str) -> dict:
     return report
 
 
-# SHAP over the full battle bank is expensive (minutes on a small cloud CPU)
-# and its result only changes when the model or data does — compute it once
-# per process and serve the cached answer. The lock keeps a burst of first
-# visitors from queueing up duplicate computations and choking the instance.
-_insights_cache: dict[int, dict] = {}
-_insights_lock = threading.Lock()
-
-
 @app.get("/insights/global")
 def global_insights(top: int = 20) -> dict:
-    """Top SHAP features of the trained win model (what drives wins meta-wide)."""
-    import joblib
+    """Top SHAP features of the trained win model (what drives wins meta-wide).
 
-    from .ml.explain import shap_values_for, top_features
+    Served from a precomputed artifact — SHAP over the full battle bank takes
+    minutes of CPU and hundreds of MB, which a small cloud instance can't
+    absorb per-request (or even per-boot). See app.ml.export_insights.
+    """
+    import json
+
     from .ml.train import MODEL_DIR
 
-    with _insights_lock:
-        if top in _insights_cache:
-            return _insights_cache[top]
-
-        path = MODEL_DIR / "win_model.joblib"
-        if not path.exists():
-            raise HTTPException(404, "No trained model — run `python -m app.ml.train`.")
-        # Safe: artifact is written locally by app.ml.train, never downloaded.
-        bundle = joblib.load(path)
-        with SessionLocal() as s:
-            from .ml.features import battles_to_frame
-
-            frame = battles_to_frame(s, source=bundle.get("source"))
-        sv, X = shap_values_for(bundle, frame)
-        result = {"n_battles": len(X), "top_features": top_features(sv, X, n=top)}
-        _insights_cache[top] = result
-        return result
+    path = MODEL_DIR / "global_insights.json"
+    if not path.exists():
+        raise HTTPException(
+            404, "No insights artifact — run `python -m app.ml.export_insights`."
+        )
+    data = json.loads(path.read_text())
+    return {"n_battles": data["n_battles"], "top_features": data["top_features"][:top]}

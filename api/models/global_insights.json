@@ -1,0 +1,255 @@
+{
+  "n_battles": 2000,
+  "top_features": [
+    {
+      "feature": "trophy_diff",
+      "importance": 0.18600578328488096,
+      "direction": "wins"
+    },
+    {
+      "feature": "p_underlevel_mean",
+      "importance": 0.06955652408882676,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Graveyard",
+      "importance": 0.05208777104895772,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Musketeer",
+      "importance": 0.04278096109851543,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Skeletons",
+      "importance": 0.0401658079474902,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Goblins",
+      "importance": 0.03554587552559516,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Lightning",
+      "importance": 0.03450312037089381,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Barbarian Barrel",
+      "importance": 0.03446699829282255,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Dark Prince",
+      "importance": 0.03252696919312904,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Cannon",
+      "importance": 0.03124956401325284,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Minions",
+      "importance": 0.029970071601610217,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Minions",
+      "importance": 0.029354768208659402,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::The Log",
+      "importance": 0.029221228461394674,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Poison",
+      "importance": 0.028305567022087953,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Knight",
+      "importance": 0.027773601550059753,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Goblin Barrel",
+      "importance": 0.02767504636140022,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Bomb Tower",
+      "importance": 0.02609728637522475,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Elite Barbarians",
+      "importance": 0.025665528857417953,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Tombstone",
+      "importance": 0.02352989902467639,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Fireball",
+      "importance": 0.02310431958567917,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Archers",
+      "importance": 0.022778270204671946,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Rocket",
+      "importance": 0.02249537718377275,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Wizard",
+      "importance": 0.02228065669345866,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Mini P.E.K.K.A",
+      "importance": 0.021752353197520367,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Skeletons",
+      "importance": 0.02124261106433439,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Valkyrie",
+      "importance": 0.02104527388789588,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Tesla",
+      "importance": 0.020928611186807018,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Guards",
+      "importance": 0.02054881043338872,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::P.E.K.K.A",
+      "importance": 0.019589906036076486,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Skeleton Dragons",
+      "importance": 0.01904375541517436,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Barbarian Barrel",
+      "importance": 0.01891886725209898,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Cannon Cart",
+      "importance": 0.018888784651910774,
+      "direction": "losses"
+    },
+    {
+      "feature": "o_underlevel_mean",
+      "importance": 0.018653883798145462,
+      "direction": "wins"
+    },
+    {
+      "feature": "underlevel_mean_diff",
+      "importance": 0.01851555500876338,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Golden Knight",
+      "importance": 0.01842214563061993,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Mother Witch",
+      "importance": 0.0182139045326778,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Giant Snowball",
+      "importance": 0.018123852810479638,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Skeleton Barrel",
+      "importance": 0.017356624279150513,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Goblin Hut",
+      "importance": 0.017232079299940375,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Mother Witch",
+      "importance": 0.016798101037957588,
+      "direction": "losses"
+    },
+    {
+      "feature": "o::Tornado",
+      "importance": 0.016577290388099773,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Earthquake",
+      "importance": 0.015813384236288797,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Ice Spirit",
+      "importance": 0.015695048417039264,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Princess",
+      "importance": 0.015620915435997439,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Dart Goblin",
+      "importance": 0.015185298511836075,
+      "direction": "wins"
+    },
+    {
+      "feature": "o::Arrows",
+      "importance": 0.014894373170006832,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::Arrows",
+      "importance": 0.014691065507804031,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Berserker",
+      "importance": 0.01465288262487363,
+      "direction": "losses"
+    },
+    {
+      "feature": "p::The Log",
+      "importance": 0.01455538148236624,
+      "direction": "wins"
+    },
+    {
+      "feature": "p::Fireball",
+      "importance": 0.014433864895438232,
+      "direction": "wins"
+    }
+  ]
+}
