@@ -34,10 +34,18 @@ export interface DeckCard {
   underlevel: number;
 }
 
+export interface ArchetypeMatchup {
+  cards: string[];
+  n: number;
+  win_rate: number;
+  delta_vs_overall: number;
+}
+
 export interface CoachReport {
   overall: { n: number; wins: number; win_rate: number | null };
   deck: DeckCard[];
   worst_matchups: Matchup[];
+  worst_archetypes: ArchetypeMatchup[] | null;
   underleveled_cards: UnderlevelCard[];
   tilt: {
     sessions: number;

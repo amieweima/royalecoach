@@ -62,13 +62,29 @@ function upgradeRanking(deck: DeckCard[], cards?: CardIndex) {
   });
 }
 
-function pickVerdict(coach: CoachReport): Matchup | null {
+type Verdict =
+  | { kind: "archetype"; cards: string[]; n: number; win_rate: number }
+  | { kind: "card"; card: string; n: number; win_rate: number };
+
+function pickVerdict(coach: CoachReport): Verdict | null {
+  // Prefer the archetype view: "bait decks beat you" is the real story, while
+  // per-card stats are confounded by staples that sit in half the meta.
+  const archetypes = (coach.worst_archetypes ?? []).filter(
+    (a) => a.delta_vs_overall < -0.05
+  );
+  if (archetypes.length) {
+    const worst = archetypes.reduce((w, a) =>
+      a.delta_vs_overall * Math.sqrt(a.n) < w.delta_vs_overall * Math.sqrt(w.n) ? a : w
+    );
+    return { kind: "archetype", ...worst };
+  }
   const losing = coach.worst_matchups.filter((m) => m.delta_vs_overall < 0);
   if (!losing.length) return null;
   // weight severity by sample size so a 2-battle fluke can't headline
-  return losing.reduce((worst, m) =>
-    m.delta_vs_overall * Math.sqrt(m.n) < worst.delta_vs_overall * Math.sqrt(worst.n) ? m : worst
+  const worst = losing.reduce((w, m) =>
+    m.delta_vs_overall * Math.sqrt(m.n) < w.delta_vs_overall * Math.sqrt(w.n) ? m : w
   );
+  return { kind: "card", ...worst };
 }
 
 /* Translate SHAP rankings into findings a player can use. Order is the
@@ -325,28 +341,36 @@ export default function Home() {
           <div className="flex items-center gap-6 flex-wrap">
             <div className="min-w-0 flex-1" style={{ minWidth: "260px" }}>
               <h2 className="display text-5xl font-semibold mt-2 leading-tight">
-                Decks with {verdict.card} are beating you.
+                {verdict.kind === "archetype"
+                  ? `${verdict.cards[0]} decks are beating you.`
+                  : `Decks with ${verdict.card} are beating you.`}
               </h2>
               <p className="mt-3 text-base max-w-2xl" style={{ color: "var(--on-arena-2)" }}>
                 You win{" "}
                 <strong className="tab-nums" style={{ color: "var(--on-arena)" }}>
                   {pct(verdict.win_rate)}
                 </strong>{" "}
-                of battles when the opponent runs {verdict.card} ({verdict.n}{" "}
-                battles) — against your {pct(overall)} overall. That gap is the
-                first thing to train.
+                {verdict.kind === "archetype"
+                  ? `against decks built around ${verdict.cards.slice(0, 3).join(" · ")}`
+                  : `of battles when the opponent runs ${verdict.card}`}{" "}
+                ({verdict.n} battles) — against your {pct(overall)} overall.
+                That gap is the first thing to train.
               </p>
             </div>
             <div className="flex items-end gap-2">
               <Emote mood="crying-king" size={88} />
-              {cards?.[verdict.card]?.icon && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={cards[verdict.card].icon!}
-                  alt={verdict.card}
-                  className="h-32 w-auto drop-shadow-lg"
-                  style={{ transform: "rotate(3deg)" }}
-                />
+              {(verdict.kind === "archetype" ? verdict.cards.slice(0, 3) : [verdict.card]).map(
+                (name, i) =>
+                  cards?.[name]?.icon && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={name}
+                      src={cards[name].icon!}
+                      alt={name}
+                      className="h-24 w-auto drop-shadow-lg"
+                      style={{ transform: `rotate(${(i - 1) * 5}deg)` }}
+                    />
+                  )
               )}
             </div>
           </div>
@@ -368,49 +392,68 @@ export default function Home() {
         <>
           <Section
             eyebrow="matchups"
-            title="Who's beating you"
-            note="Based on which cards the opponent ran, over your competitive battles."
+            title="Which decks beat you"
+            note="Your opponents' decks, classified into meta archetypes learned from ~12,000 harvested ladder decks — because a popular staple card in every deck says less than the deck it belongs to."
           >
             {(() => {
-              const trouble = coach.worst_matchups
-                .filter((m) => m.delta_vs_overall < -0.05)
-                .slice(0, 3);
-              if (!trouble.length)
-                return <p className="coach-line">No matchup stands out as a problem yet — nice spread.</p>;
+              const archetypes = coach.worst_archetypes;
+              if (!archetypes?.length)
+                return (
+                  <p className="coach-line">
+                    Not enough classified battles yet — keep playing and the
+                    deck-type picture fills in.
+                  </p>
+                );
+              const worst = archetypes[0];
               return (
                 <>
                   <p className="coach-line">
-                    {trouble.map((m) => m.card).join(", ")}{" "}
-                    {trouble.length > 1 ? "give" : "gives"} you the most trouble
-                    right now. Scout how those cards are countered before your
-                    next session.
+                    {worst.delta_vs_overall < -0.05
+                      ? `Decks built around ${worst.cards.slice(0, 3).join(", ")} are your problem — everything else you handle at or above your average.`
+                      : "No deck type stands out as a problem right now."}
                   </p>
-                  <div className="grid grid-cols-3 gap-3 max-w-md">
-                    {trouble.map((m) => (
-                      <div
-                        key={m.card}
-                        className="card p-4 flex flex-col items-center gap-1 text-center"
-                        style={{ background: "var(--paper)" }}
-                      >
-                        <CardChip name={m.card} meta={cards?.[m.card]} size={64} />
-                        <span className="text-xs font-medium mt-1">{m.card}</span>
-                        <span className="display text-2xl font-semibold tab-nums">
-                          {pct(m.win_rate)}
-                        </span>
-                        <span className="text-xs font-medium" style={{ color: "var(--them)" }}>
-                          ▼ your win rate
-                        </span>
-                        <span className="text-xs" style={{ color: "var(--muted)" }}>
-                          {m.n} battles
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex flex-col gap-3">
+                    {archetypes.slice(0, 4).map((a) => {
+                      const losing = a.delta_vs_overall < 0;
+                      return (
+                        <div
+                          key={a.cards.join()}
+                          className="card p-4 flex items-center gap-4 flex-wrap"
+                          style={{ background: "var(--paper)" }}
+                        >
+                          <div className="flex gap-1.5">
+                            {a.cards.slice(0, 4).map((name) => (
+                              <CardChip key={name} name={name} meta={cards?.[name]} size={44} />
+                            ))}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium block">
+                              {a.cards.slice(0, 3).join(" · ")} decks
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--muted)" }}>
+                              {a.n} battles
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="display text-2xl font-semibold tab-nums block">
+                              {pct(a.win_rate)}
+                            </span>
+                            <span
+                              className="text-xs font-medium"
+                              style={{ color: losing ? "var(--them)" : "var(--you)" }}
+                            >
+                              {losing ? "▼ below" : "▲ above"} your average
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               );
             })()}
             <details className="receipts mt-4">
-              <summary>show every matchup</summary>
+              <summary>show per-card matchups</summary>
               <Legend negative="below your overall" positive="above your overall" />
               {coach.worst_matchups.slice(0, 12).map((m) => (
                 <DeltaRow

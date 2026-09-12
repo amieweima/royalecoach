@@ -92,6 +92,41 @@ def deck_report(battles: list[Battle]) -> list[dict]:
     return out
 
 
+def archetype_report(battles: list[Battle], min_n: int = 4) -> list[dict] | None:
+    """Win rate against each meta deck archetype, worst first.
+
+    This answers "what kind of deck beats me?" — the per-card view is
+    confounded by popularity (staples like The Log appear in half the meta),
+    so opponents are classified into clustered archetypes instead. Returns
+    None until the archetype model has been fitted.
+    """
+    from . import archetypes
+
+    artifact = archetypes.load()
+    if artifact is None:
+        return None
+
+    overall = overall_win_rate(battles)["win_rate"] or 0.0
+    stats: dict[int, list[int]] = {}  # cluster id -> [n, wins]
+    for b in battles:
+        deck = {c.get("name") for c in json.loads(b.opponent_deck_json)}
+        cid = archetypes.classify(deck, artifact)
+        s = stats.setdefault(cid, [0, 0])
+        s[0] += 1
+        s[1] += b.won
+    out = [
+        {
+            "cards": artifact["signatures"][cid],
+            "n": n,
+            "win_rate": wins / n,
+            "delta_vs_overall": wins / n - overall,
+        }
+        for cid, (n, wins) in stats.items()
+        if n >= min_n
+    ]
+    return sorted(out, key=lambda r: r["win_rate"])
+
+
 def underlevel_report(battles: list[Battle]) -> list[dict]:
     """Your cards that are below max level, with your win rate when playing them.
 
@@ -170,6 +205,7 @@ def full_report(session: Session) -> dict:
         "overall": overall_win_rate(battles),
         "deck": deck_report(battles),
         "worst_matchups": matchup_report(battles),
+        "worst_archetypes": archetype_report(battles),
         "underleveled_cards": underlevel_report(battles),
         "tilt": tilt_report(battles),
     }
