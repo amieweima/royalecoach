@@ -19,14 +19,25 @@ from ..models import Battle
 SESSION_GAP = timedelta(minutes=30)  # a gap this long starts a new play session
 MIN_MATCHUP_N = 5
 
+# Friendlies/tournaments/challenges cap card levels to tournament standard and
+# carry no stakes — they distort both level and win-rate stats, so the coach
+# only judges real play.
+CASUAL_TYPE_MARKERS = ("friendly", "clanmate", "tournament", "challenge", "practice")
+
+
+def is_competitive(battle: Battle) -> bool:
+    t = (battle.battle_type or "").lower()
+    return not any(marker in t for marker in CASUAL_TYPE_MARKERS)
+
 
 def my_battles(session: Session) -> list[Battle]:
-    return (
-        session.query(Battle)
+    return [
+        b
+        for b in session.query(Battle)
         .filter(Battle.source == "me")
         .order_by(Battle.battle_time)
-        .all()
-    )
+        if is_competitive(b)
+    ]
 
 
 def overall_win_rate(battles: list[Battle]) -> dict:
@@ -58,21 +69,27 @@ def matchup_report(battles: list[Battle], min_n: int = MIN_MATCHUP_N) -> list[di
 
 
 def underlevel_report(battles: list[Battle]) -> list[dict]:
-    """Your cards that are below max level, with your win rate when playing them."""
+    """Your cards that are below max level, with your win rate when playing them.
+
+    A card's true level is the *best* reading across battles: level-capped
+    modes can only report a card lower than it really is, never higher, and
+    upgrades over time also make the latest/highest reading the honest one.
+    """
     stats: dict[str, dict] = {}
     for b in battles:
         for c in json.loads(b.player_deck_json):
             under = (c.get("maxLevel") or 0) - (c.get("level") or 0)
-            if under <= 0:
-                continue
-            s = stats.setdefault(c.get("name"), {"n": 0, "wins": 0, "underlevel": under})
+            s = stats.setdefault(
+                c.get("name"), {"n": 0, "wins": 0, "underlevel": under}
+            )
             s["n"] += 1
             s["wins"] += b.won
-            s["underlevel"] = max(s["underlevel"], under)
+            s["underlevel"] = min(s["underlevel"], under)
     out = [
         {"card": card, "underlevel": s["underlevel"], "n": s["n"],
          "win_rate": s["wins"] / s["n"]}
         for card, s in stats.items()
+        if s["underlevel"] > 0
     ]
     return sorted(out, key=lambda r: (-r["underlevel"], -r["n"]))
 

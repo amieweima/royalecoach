@@ -44,6 +44,32 @@ def test_underlevel_report(session):
     assert all(r["underlevel"] == 2 and r["n"] == 4 for r in report)
 
 
+def test_level_capped_casual_battles_ignored(session):
+    true_deck = deck_json(DECK_A, level=13, max_level=14)  # really 1 below max
+    capped_deck = deck_json(DECK_A, level=9, max_level=14)  # tournament cap
+    battles = [
+        make_battle(i, won=1, p_deck=true_deck, source="me") for i in range(3)
+    ]
+    capped = make_battle(3, won=0, p_deck=capped_deck, source="me")
+    capped.battle_type = "friendly"
+    battles.append(capped)
+    session.add_all(battles)
+    session.commit()
+
+    mine = my_battles(session)
+    assert len(mine) == 3  # the friendly is out of coaching stats entirely
+
+    report = underlevel_report(mine)
+    # the capped reading must not inflate the deficit
+    assert all(r["underlevel"] == 1 for r in report)
+
+
+def test_maxed_cards_not_reported(session):
+    session.add(make_battle(0, p_deck=deck_json(DECK_A, level=14, max_level=14), source="me"))
+    session.commit()
+    assert underlevel_report(my_battles(session)) == []
+
+
 def test_tilt_report_sessions_and_streaks(session):
     base = datetime(2026, 8, 20, 18, 0)
     battles = []
