@@ -2,7 +2,7 @@
 .venv/
 __pycache__/
 *.pyc
-clashcoach.db
+royalecoach.db
 node_modules/
 .next/
 api/models/

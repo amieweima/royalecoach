@@ -206,7 +206,7 @@ export default function Home() {
     return (
       <main className="max-w-3xl mx-auto px-6 py-24">
         <h1 className="display text-3xl font-semibold mb-3" style={{ color: "var(--on-arena)" }}>
-          ClashCoach
+          RoyaleCoach
         </h1>
         <div className="card p-6">
           <p className="font-medium mb-1">The API isn&apos;t reachable.</p>
@@ -224,7 +224,7 @@ export default function Home() {
     <main className="max-w-4xl mx-auto px-6 py-10 flex flex-col gap-6">
       <header className="flex items-baseline justify-between flex-wrap gap-2">
         <h1 className="display text-2xl font-bold tracking-tight" style={{ color: "var(--on-arena)" }}>
-          Clash<span style={{ color: "var(--gold)" }}>Coach</span>
+          Royale<span style={{ color: "var(--gold)" }}>Coach</span>
         </h1>
         <p className="text-xs tab-nums" style={{ color: "var(--on-arena-2)" }}>
           {stats?.last_battle

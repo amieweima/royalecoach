@@ -6,7 +6,7 @@ from .db import SessionLocal, init_db
 from .ml.coach import full_report
 from .models import Battle, PlayerSeen
 
-app = FastAPI(title="ClashCoach API")
+app = FastAPI(title="RoyaleCoach API")
 
 # the Next.js dev server; tighten to the deployed dashboard origin in prod
 app.add_middleware(

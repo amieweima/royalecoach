@@ -9,7 +9,7 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "ClashCoach",
+  title: "RoyaleCoach",
   description:
     "A scouting report on your own Clash Royale play, built from your battle history by an explainable ML pipeline.",
 };

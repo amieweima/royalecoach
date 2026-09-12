@@ -1,4 +1,4 @@
-# ClashCoach
+# RoyaleCoach
 
 An AI coach for Clash Royale. It banks your battle history through the official
 Supercell API, trains a win-probability model on thousands of top-ladder
