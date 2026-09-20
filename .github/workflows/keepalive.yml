@@ -1,0 +1,19 @@
+name: Keep API warm
+
+# Render's free web service spins down after 15 min without inbound traffic,
+# and the next visitor eats a ~1 min cold start. The API pings itself to stay
+# awake (app/main.py: _keepalive_forever), but a sleeping process can't wake
+# itself — after a deploy or restart, this outside ping is what brings it
+# back. GitHub's cron can run late under load, which is why it isn't the only
+# line of defence.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # --max-time outlasts a cold start; a failed ping is not worth a red X
+      - run: curl -fsS --max-time 90 https://royalecoach-api.onrender.com/health || true

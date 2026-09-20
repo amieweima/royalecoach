@@ -41,11 +41,39 @@ def _poll_forever() -> None:
         time.sleep(POLL_INTERVAL)
 
 
+KEEPALIVE_INTERVAL = int(os.getenv("KEEPALIVE_INTERVAL_SECONDS", "600"))
+
+
+def _ping_self(base_url: str) -> None:
+    import httpx
+
+    try:
+        httpx.get(f"{base_url}/health", timeout=10)
+    except Exception as e:  # a missed ping only risks a nap; never crash the thread
+        print(f"keepalive error: {e}")
+
+
+def _keepalive_forever(base_url: str) -> None:
+    """Render's free tier spins the service down after 15 min without inbound
+    traffic, and the next visitor eats a ~1 min cold start. A request to our
+    own public URL counts as inbound, so the instance never goes idle. This
+    can't wake an instance that is already asleep (a deploy, a restart) —
+    .github/workflows/keepalive.yml covers that from the outside."""
+    while True:
+        time.sleep(KEEPALIVE_INTERVAL)
+        _ping_self(base_url)
+
+
 @app.on_event("startup")
 def startup() -> None:
     init_db()
     if os.getenv("ENABLE_POLLER") == "1":
         threading.Thread(target=_poll_forever, daemon=True).start()
+    # Render sets RENDER_EXTERNAL_URL on web services; unset locally -> no-op
+    if base_url := os.getenv("RENDER_EXTERNAL_URL"):
+        threading.Thread(
+            target=_keepalive_forever, args=(base_url,), daemon=True
+        ).start()
 
 
 @app.get("/health")
